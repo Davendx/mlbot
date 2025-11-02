@@ -1,3 +1,4 @@
+import asyncio
 from aiofiles.os import path as aiopath
 from base64 import b64encode
 from re import match as re_match
@@ -92,6 +93,7 @@ class Mirror(TaskListener):
             "-hl": False,
             "-bt": False,
             "-ut": False,
+            "-rn": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
@@ -115,6 +117,7 @@ class Mirror(TaskListener):
         self.select = args["-s"]
         self.seed = args["-d"]
         self.name = args["-n"]
+        self.rename = args["-rn"]
         self.up_dest = args["-up"]
         self.rc_flags = args["-rcf"]
         self.link = args["link"]
@@ -364,37 +367,61 @@ class Mirror(TaskListener):
             await add_aria2_download(self, path, headers, ratio, seed_time)
 
 
+class AutoDeleteMessage:
+    def __init__(self, client, message):
+        self.client = client
+        self.message = message
+        bot_loop.create_task(self.start_delete())
+
+    async def start_delete(self):
+        await asyncio.sleep(10)
+        try:
+            await self.client.delete_messages(
+                chat_id=self.message.chat.id, message_ids=self.message.message_id
+            )
+        except Exception:
+            pass
+
+
 async def mirror(client, message):
     bot_loop.create_task(Mirror(client, message).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def qb_mirror(client, message):
     bot_loop.create_task(Mirror(client, message, is_qbit=True).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def jd_mirror(client, message):
     bot_loop.create_task(Mirror(client, message, is_jd=True).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def nzb_mirror(client, message):
     bot_loop.create_task(Mirror(client, message, is_nzb=True).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def leech(client, message):
     bot_loop.create_task(Mirror(client, message, is_leech=True).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def qb_leech(client, message):
     bot_loop.create_task(
         Mirror(client, message, is_qbit=True, is_leech=True).new_event()
     )
+    AutoDeleteMessage(client, message)
 
 
 async def jd_leech(client, message):
     bot_loop.create_task(Mirror(client, message, is_leech=True, is_jd=True).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def nzb_leech(client, message):
     bot_loop.create_task(
         Mirror(client, message, is_leech=True, is_nzb=True).new_event()
     )
+    AutoDeleteMessage(client, message)

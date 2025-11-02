@@ -1,4 +1,4 @@
-from aiofiles.os import path as aiopath, listdir, remove
+from aiofiles.os import path as aiopath, listdir, remove, rename as aiorename
 from asyncio import sleep, gather
 from html import escape
 from requests import utils as rutils
@@ -21,6 +21,7 @@ from ...core.torrent_manager import TorrentManager
 from ..common import TaskConfig
 from ..ext_utils.bot_utils import sync_to_async
 from ..ext_utils.db_handler import database
+from ..ext_utils.renamer_helper import get_rename_anime
 from ..ext_utils.files_utils import (
     get_path_size,
     clean_download,
@@ -159,6 +160,13 @@ class TaskListener(TaskConfig):
                 return
 
         dl_path = f"{self.dir}/{self.name}"
+        if self.rename:
+            renamed_filepath = get_rename_anime(self.name)
+            if renamed_filepath:
+                renamed_path = f"{self.dir}/{renamed_filepath}"
+                await aiorename(dl_path, renamed_path)
+                self.name = renamed_filepath
+                dl_path = renamed_path
         self.size = await get_path_size(dl_path)
         self.is_file = await aiopath.isfile(dl_path)
 
@@ -317,6 +325,14 @@ class TaskListener(TaskConfig):
             await database.rm_complete_task(self.message.link)
         msg = f"<b>Name: </b><code>{escape(self.name)}</code>\n\n<b>Size: </b>{get_readable_file_size(self.size)}"
         LOGGER.info(f"Task Done: {self.name}")
+        if self.is_leech:
+            if self.seed:
+                await clean_target(self.up_dir)
+                async with queue_dict_lock:
+                    if self.mid in non_queued_up:
+                        non_queued_up.remove(self.mid)
+                await start_from_queued()
+            return
         if self.is_leech:
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
