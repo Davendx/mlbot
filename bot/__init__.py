@@ -37,6 +37,19 @@ basicConfig(
 LOGGER = getLogger(__name__)
 cpu_no = cpu_count()
 
+VIDEO_SUFFIXES = {
+    "mkv",
+    "mp4",
+    "avi",
+    "mov",
+    "wmv",
+    "flv",
+    "webm",
+    "mpg",
+    "mpeg",
+    "3gp",
+    "m4v",
+}
 DOWNLOAD_DIR = "/usr/src/app/downloads/"
 intervals = {"status": {}, "qb": "", "jd": "", "nzb": "", "stopAll": False}
 qb_torrents = {}
