@@ -1,4 +1,3 @@
-import asyncio
 from aiofiles.os import path as aiopath
 from base64 import b64encode
 from re import match as re_match
@@ -40,6 +39,7 @@ from ..helper.mirror_leech_utils.download_utils.telegram_download import (
     TelegramDownloadHelper,
 )
 from ..helper.telegram_helper.message_utils import send_message, get_tg_link_message
+from ..helper.ext_utils.message_utils import AutoDeleteMessage
 
 
 class Mirror(TaskListener):
@@ -365,22 +365,6 @@ class Mirror(TaskListener):
                     [f"authorization: Basic {b64encode(auth.encode()).decode('ascii')}"]
                 )
             await add_aria2_download(self, path, headers, ratio, seed_time)
-
-
-class AutoDeleteMessage:
-    def __init__(self, client, message):
-        self.client = client
-        self.message = message
-        bot_loop.create_task(self.start_delete())
-
-    async def start_delete(self):
-        await asyncio.sleep(10)
-        try:
-            await self.client.delete_messages(
-                chat_id=self.message.chat.id, message_ids=self.message.message_id
-            )
-        except Exception:
-            pass
 
 
 async def mirror(client, message):

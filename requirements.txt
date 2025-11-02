@@ -5,6 +5,7 @@ anytree
 apscheduler
 aioaria2
 aioqbt
+anitopy
 cloudscraper
 dnspython
 fastapi
@@ -31,5 +32,4 @@ urllib3
 uvicorn
 uvloop
 xattr
-anitopy
 yt-dlp[default,curl-cffi]

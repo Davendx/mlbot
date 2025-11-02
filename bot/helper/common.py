@@ -114,6 +114,7 @@ class TaskConfig:
         self.bot_trans = False
         self.user_trans = False
         self.progress = True
+        self.rename = False
         self.ffmpeg_cmds = None
         self.chat_thread_id = None
         self.subproc = None

@@ -24,6 +24,7 @@ from ..helper.telegram_helper.message_utils import (
     edit_message,
     delete_message,
 )
+from ..helper.ext_utils.message_utils import AutoDeleteMessage
 
 
 @new_task
@@ -313,9 +314,11 @@ class YtDlp(TaskListener):
             "-ns": "",
             "-tl": "",
             "-ff": set(),
+            "-rn": False,
         }
 
         arg_parser(input_list[1:], args)
+        self.rename = args["-rn"]
 
         try:
             self.multi = int(args["-i"])
@@ -463,7 +466,9 @@ class YtDlp(TaskListener):
 
 async def ytdl(client, message):
     bot_loop.create_task(YtDlp(client, message).new_event())
+    AutoDeleteMessage(client, message)
 
 
 async def ytdl_leech(client, message):
     bot_loop.create_task(YtDlp(client, message, is_leech=True).new_event())
+    AutoDeleteMessage(client, message)
