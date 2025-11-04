@@ -246,7 +246,10 @@ class RcloneTransferHelper:
                 if not item['IsDir']:
                     file_path = f"{base_path}/{item['Path']}"
                     url_path = rutils.quote(file_path)
-                    share_url = f"{Config.RCLONE_SERVE_URL}/{remote}/{url_path}"
+                    if Config.RCLONE_SERVE_USER and Config.RCLONE_SERVE_PASS:
+                        share_url = f"{Config.RCLONE_SERVE_URL}/{remote}/{url_path}".replace('://', f'://{Config.RCLONE_SERVE_USER}:{Config.RCLONE_SERVE_PASS}@')
+                    else:
+                        share_url = f"{Config.RCLONE_SERVE_URL}/{remote}/{url_path}"
                     links.append(share_url)
         elif code != -9:
             LOGGER.error(
@@ -372,7 +375,7 @@ class RcloneTransferHelper:
                 destination,
             ]
             res, err, code = await cmd_exec(cmd)
-
+            link, links = "", []
             if code == 0:
                 link = res.strip()
                 if mime_type == "Folder":
@@ -380,9 +383,22 @@ class RcloneTransferHelper:
                 else:
                     links = [link]
             elif code != -9:
-                LOGGER.error(f"while getting link. Path: {destination} | Stderr: {err}")
-                link = ""
-                links = []
+                if Config.RCLONE_SERVE_URL:
+                    remote, rpath = destination.split(":", 1)
+                    url_path = rutils.quote(f"{rpath}")
+                    if Config.RCLONE_SERVE_USER and Config.RCLONE_SERVE_PASS:
+                        share_url = f"{Config.RCLONE_SERVE_URL}/{remote}/{url_path}".replace('://', f'://{Config.RCLONE_SERVE_USER}:{Config.RCLONE_SERVE_PASS}@')
+                    else:
+                        share_url = f"{Config.RCLONE_SERVE_URL}/{remote}/{url_path}"
+                    if mime_type == "Folder":
+                        share_url += "/"
+                    link = share_url
+                    if mime_type == "Folder":
+                        links = await self._get_rclone_links(oconfig_path, destination)
+                    else:
+                        links = [link]
+                else:
+                    LOGGER.error(f"while getting link. Path: {destination} | Stderr: {err}")
         if self._listener.is_cancelled:
             return
         LOGGER.info(f"Upload Done. Path: {destination}")

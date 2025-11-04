@@ -343,16 +343,17 @@ class TaskListener(TaskConfig):
                 if fmsg != "":
                     await send_message(self.message, msg + fmsg)
             if links:
+                sanitized_name = self.name.replace("/", "_")
                 cmd = [
                     "ruby",
                     "scripts/generate_dlc.rb",
-                    self.name,
+                    sanitized_name,
                     ",".join(links),
                 ]
                 process = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
                 stdout, stderr = await process.communicate()
                 if process.returncode == 0:
-                    dlc_file = f"{self.name}.dlc"
+                    dlc_file = f"{sanitized_name}.dlc"
                     await send_file(
                         self.message,
                         dlc_file,
