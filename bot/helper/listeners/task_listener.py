@@ -1,5 +1,6 @@
 from aiofiles.os import path as aiopath, listdir, remove
-from asyncio import sleep, gather
+from asyncio import sleep, gather, create_subprocess_exec
+from asyncio.subprocess import PIPE
 from html import escape
 from requests import utils as rutils
 
@@ -46,6 +47,7 @@ from ..telegram_helper.message_utils import (
     send_message,
     delete_status,
     update_status_message,
+    send_file,
 )
 
 
@@ -313,7 +315,7 @@ class TaskListener(TaskConfig):
         return
 
     async def on_upload_complete(
-        self, link, files, folders, mime_type, rclone_path="", dir_id=""
+        self, link, files, folders, mime_type, rclone_path="", dir_id="", links=None
     ):
         if (
             self.is_super_chat
@@ -323,6 +325,7 @@ class TaskListener(TaskConfig):
             await database.rm_complete_task(self.message.link)
         msg = f"<b>Name: </b><code>{escape(self.name)}</code>\n\n<b>Size: </b>{get_readable_file_size(self.size)}"
         LOGGER.info(f"Task Done: {self.name}")
+        dlc_file = None
         if self.is_leech:
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
@@ -339,6 +342,26 @@ class TaskListener(TaskConfig):
                         fmsg = ""
                 if fmsg != "":
                     await send_message(self.message, msg + fmsg)
+            if links:
+                cmd = [
+                    "ruby",
+                    "scripts/generate_dlc.rb",
+                    self.name,
+                    ",".join(links),
+                ]
+                process = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+                stdout, stderr = await process.communicate()
+                if process.returncode == 0:
+                    dlc_file = f"{self.name}.dlc"
+                    await send_file(
+                        self.message,
+                        dlc_file,
+                        caption="JDownloader DLC file",
+                    )
+                else:
+                    LOGGER.error(
+                        f"Error creating DLC file: {stderr.decode().strip()}"
+                    )
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
@@ -380,6 +403,8 @@ class TaskListener(TaskConfig):
                 button = None
             msg += f"\n\n<b>cc: </b>{self.tag}"
             await send_message(self.message, msg, button)
+        if dlc_file and await aiopath.exists(dlc_file):
+            await remove(dlc_file)
         if self.seed:
             await clean_target(self.up_dir)
             async with queue_dict_lock:

@@ -7,10 +7,11 @@ from json import loads
 from logging import getLogger
 from random import randrange
 from re import findall as re_findall
+from requests import utils as rutils
 
-from ....core.config_manager import Config
-from ...ext_utils.bot_utils import cmd_exec, sync_to_async
-from ...ext_utils.files_utils import (
+from .....core.config_manager import Config
+from ....ext_utils.bot_utils import cmd_exec, sync_to_async
+from ....ext_utils.files_utils import (
     get_mime_type,
     count_files_and_folders,
 )
@@ -228,6 +229,31 @@ class RcloneTransferHelper:
             link = ""
         return link
 
+    async def _get_rclone_links(self, config_path, destination):
+        cmd = [
+            "rclone",
+            "lsjson",
+            "--config",
+            config_path,
+            destination,
+        ]
+        res, err, code = await cmd_exec(cmd)
+        links = []
+        if code == 0:
+            result = loads(res)
+            remote, base_path = destination.split(':', 1)
+            for item in result:
+                if not item['IsDir']:
+                    file_path = f"{base_path}/{item['Path']}"
+                    url_path = rutils.quote(file_path)
+                    share_url = f"{Config.RCLONE_SERVE_URL}/{remote}/{url_path}"
+                    links.append(share_url)
+        elif code != -9:
+            LOGGER.error(
+                f"while getting rclone links. Path: {destination}. Stderr: {err}"
+            )
+        return links
+
     async def _start_upload(self, cmd, remote_type):
         self._proc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
         await self._progress()
@@ -336,6 +362,7 @@ class RcloneTransferHelper:
 
         if remote_type == "drive":
             link = await self._get_gdrive_link(oconfig_path, destination, mime_type)
+            links = [link] if link else []
         else:
             cmd = [
                 "rclone",
@@ -347,15 +374,20 @@ class RcloneTransferHelper:
             res, err, code = await cmd_exec(cmd)
 
             if code == 0:
-                link = res
+                link = res.strip()
+                if mime_type == "Folder":
+                    links = await self._get_rclone_links(oconfig_path, destination)
+                else:
+                    links = [link]
             elif code != -9:
                 LOGGER.error(f"while getting link. Path: {destination} | Stderr: {err}")
                 link = ""
+                links = []
         if self._listener.is_cancelled:
             return
         LOGGER.info(f"Upload Done. Path: {destination}")
         await self._listener.on_upload_complete(
-            link, files, folders, mime_type, destination
+            link, files, folders, mime_type, destination, links=links
         )
         return
 

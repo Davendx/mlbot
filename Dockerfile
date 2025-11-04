@@ -3,6 +3,9 @@ FROM anasty17/mltb:latest
 WORKDIR /usr/src/app
 RUN chmod 777 /usr/src/app
 
+# Install Ruby and dlc gem
+RUN apt-get update && apt-get install -y ruby && gem install dlc
+
 RUN python3 -m venv mltbenv
 
 COPY requirements.txt .
