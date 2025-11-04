@@ -9,9 +9,9 @@ from random import randrange
 from re import findall as re_findall
 from requests import utils as rutils
 
-from .....core.config_manager import Config
-from ....ext_utils.bot_utils import cmd_exec, sync_to_async
-from ....ext_utils.files_utils import (
+from ....core.config_manager import Config
+from ...ext_utils.bot_utils import cmd_exec, sync_to_async
+from ...ext_utils.files_utils import (
     get_mime_type,
     count_files_and_folders,
 )
