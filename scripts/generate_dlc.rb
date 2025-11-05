@@ -1,21 +1,18 @@
 require 'dlc'
 require 'json'
 
-# Get package name and links from command line arguments
+# Get arguments
 package_name = ARGV[0]
-links = ARGV[1].split(',')
+links_json = ARGV[1]
+links = JSON.parse(links_json)
 
-# Create a new DLC container
-container = DLC::Package.new
-container.name = package_name
-container.add_link(links)
+# Create DLC
+container = DLC::Container.new
+container.package = package_name
+container.links = links
+container.generate
 
-# Define the output file path
-output_file = "#{package_name}.dlc"
-
-# Write the DLC file
-File.open(output_file, "w") do |f|
+# Write DLC file
+File.open("#{package_name}.dlc", 'w') do |f|
   f.write container.dlc
 end
-
-puts "DLC file '#{output_file}' created successfully."

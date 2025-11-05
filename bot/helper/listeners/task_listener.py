@@ -2,6 +2,7 @@ from aiofiles.os import path as aiopath, listdir, remove
 from asyncio import sleep, gather, create_subprocess_exec
 from asyncio.subprocess import PIPE
 from html import escape
+from json import dumps as json_dumps
 from requests import utils as rutils
 
 from ... import (
@@ -315,7 +316,15 @@ class TaskListener(TaskConfig):
         return
 
     async def on_upload_complete(
-        self, link, files, folders, mime_type, rclone_path="", dir_id="", links=None
+        self,
+        link,
+        files,
+        folders,
+        mime_type,
+        rclone_path="",
+        dir_id="",
+        links=None,
+        uploaded_files=None,
     ):
         if (
             self.is_super_chat
@@ -342,27 +351,6 @@ class TaskListener(TaskConfig):
                         fmsg = ""
                 if fmsg != "":
                     await send_message(self.message, msg + fmsg)
-            if links:
-                sanitized_name = self.name.replace("/", "_")
-                cmd = [
-                    "ruby",
-                    "scripts/generate_dlc.rb",
-                    sanitized_name,
-                    ",".join(links),
-                ]
-                process = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
-                stdout, stderr = await process.communicate()
-                if process.returncode == 0:
-                    dlc_file = f"{sanitized_name}.dlc"
-                    await send_file(
-                        self.message,
-                        dlc_file,
-                        caption="JDownloader DLC file",
-                    )
-                else:
-                    LOGGER.error(
-                        f"Error creating DLC file: {stderr.decode().strip()}"
-                    )
         else:
             msg += f"\n\n<b>Type: </b>{mime_type}"
             if mime_type == "Folder":
@@ -404,6 +392,30 @@ class TaskListener(TaskConfig):
                 button = None
             msg += f"\n\n<b>cc: </b>{self.tag}"
             await send_message(self.message, msg, button)
+            if links:
+                sanitized_name = self.name.replace("/", "_")
+                cmd = [
+                        "ruby",
+                        "scripts/generate_dlc.rb",
+                        sanitized_name,
+                        json_dumps(links),
+                    ]
+                    process = await create_subprocess_exec(
+                        *cmd, stdout=PIPE, stderr=PIPE
+                    )
+                    stdout, stderr = await process.communicate()
+                    if process.returncode == 0:
+                        dlc_file = f"{sanitized_name}.dlc"
+                        await send_file(
+                            self.message,
+                            dlc_file,
+                            caption="JDownloader DLC file",
+                        )
+                    else:
+                        LOGGER.error(
+                            f"Error creating DLC file: {stderr.decode().strip()}"
+                        )
+
         if dlc_file and await aiopath.exists(dlc_file):
             await remove(dlc_file)
         if self.seed:

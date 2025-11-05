@@ -257,6 +257,27 @@ class RcloneTransferHelper:
             )
         return links
 
+    async def _get_rclone_files(self, config_path, destination):
+        cmd = [
+            "rclone",
+            "lsjson",
+            "--config",
+            config_path,
+            destination,
+        ]
+        res, err, code = await cmd_exec(cmd)
+        files = []
+        if code == 0:
+            result = loads(res)
+            for item in result:
+                if not item["IsDir"]:
+                    files.append(item["Path"])
+        elif code != -9:
+            LOGGER.error(
+                f"while getting rclone file list. Path: {destination}. Stderr: {err}"
+            )
+        return files
+
     async def _start_upload(self, cmd, remote_type):
         self._proc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
         await self._progress()
@@ -402,8 +423,16 @@ class RcloneTransferHelper:
         if self._listener.is_cancelled:
             return
         LOGGER.info(f"Upload Done. Path: {destination}")
+
+        uploaded_files = await self._get_rclone_files(oconfig_path, destination)
         await self._listener.on_upload_complete(
-            link, files, folders, mime_type, destination, links=links
+            link,
+            files,
+            folders,
+            mime_type,
+            destination,
+            links=links,
+            uploaded_files=uploaded_files,
         )
         return
 
