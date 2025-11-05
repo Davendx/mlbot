@@ -326,6 +326,16 @@ class TaskListener(TaskConfig):
         links=None,
         uploaded_files=None,
     ):
+        LOGGER.info("listener.py: on_upload_complete method started")
+        LOGGER.info(f"listener.py: link: {link}")
+        LOGGER.info(f"listener.py: files: {files}")
+        LOGGER.info(f"listener.py: folders: {folders}")
+        LOGGER.info(f"listener.py: mime_type: {mime_type}")
+        LOGGER.info(f"listener.py: rclone_path: {rclone_path}")
+        LOGGER.info(f"listener.py: dir_id: {dir_id}")
+        LOGGER.info(f"listener.py: links: {links}")
+        LOGGER.info(f"listener.py: uploaded_files: {uploaded_files}")
+
         if (
             self.is_super_chat
             and Config.INCOMPLETE_TASK_NOTIFIER
@@ -392,29 +402,37 @@ class TaskListener(TaskConfig):
                 button = None
             msg += f"\n\n<b>cc: </b>{self.tag}"
             await send_message(self.message, msg, button)
+            LOGGER.info("listener.py: Main message sent. Checking for links to generate DLC.")
             if links:
+                LOGGER.info("listener.py: Links found, proceeding with DLC generation.")
                 sanitized_name = self.name.replace("/", "_")
+                LOGGER.info(f"listener.py: Sanitized name: {sanitized_name}")
                 cmd = [
                     "ruby",
                     "scripts/generate_dlc.rb",
                     sanitized_name,
                     json_dumps(links),
                 ]
+                LOGGER.info(f"listener.py: Executing command: {' '.join(cmd)}")
                 process = await create_subprocess_exec(
                     *cmd, stdout=PIPE, stderr=PIPE
                 )
                 stdout, stderr = await process.communicate()
                 if process.returncode == 0:
+                    LOGGER.info("listener.py: DLC file created successfully.")
                     dlc_file = f"{sanitized_name}.dlc"
                     await send_file(
                         self.message,
                         dlc_file,
                         caption="JDownloader DLC file",
                     )
+                    LOGGER.info("listener.py: DLC file sent to user.")
                 else:
                     LOGGER.error(
                         f"Error creating DLC file: {stderr.decode().strip()}"
                     )
+            else:
+                LOGGER.info("listener.py: No links found, skipping DLC generation.")
 
         if dlc_file and await aiopath.exists(dlc_file):
             await remove(dlc_file)

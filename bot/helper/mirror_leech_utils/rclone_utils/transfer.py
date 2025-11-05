@@ -423,8 +423,10 @@ class RcloneTransferHelper:
         if self._listener.is_cancelled:
             return
         LOGGER.info(f"Upload Done. Path: {destination}")
-
+        LOGGER.info("transfer.py: Getting list of uploaded files.")
         uploaded_files = await self._get_rclone_files(oconfig_path, destination)
+        LOGGER.info(f"transfer.py: Found {len(uploaded_files)} files.")
+        LOGGER.info("transfer.py: Calling on_upload_complete in listener.")
         await self._listener.on_upload_complete(
             link,
             files,
