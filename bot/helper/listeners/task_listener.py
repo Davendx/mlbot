@@ -395,26 +395,26 @@ class TaskListener(TaskConfig):
             if links:
                 sanitized_name = self.name.replace("/", "_")
                 cmd = [
-                        "ruby",
-                        "scripts/generate_dlc.rb",
-                        sanitized_name,
-                        json_dumps(links),
-                    ]
-                    process = await create_subprocess_exec(
-                        *cmd, stdout=PIPE, stderr=PIPE
+                    "ruby",
+                    "scripts/generate_dlc.rb",
+                    sanitized_name,
+                    json_dumps(links),
+                ]
+                process = await create_subprocess_exec(
+                    *cmd, stdout=PIPE, stderr=PIPE
+                )
+                stdout, stderr = await process.communicate()
+                if process.returncode == 0:
+                    dlc_file = f"{sanitized_name}.dlc"
+                    await send_file(
+                        self.message,
+                        dlc_file,
+                        caption="JDownloader DLC file",
                     )
-                    stdout, stderr = await process.communicate()
-                    if process.returncode == 0:
-                        dlc_file = f"{sanitized_name}.dlc"
-                        await send_file(
-                            self.message,
-                            dlc_file,
-                            caption="JDownloader DLC file",
-                        )
-                    else:
-                        LOGGER.error(
-                            f"Error creating DLC file: {stderr.decode().strip()}"
-                        )
+                else:
+                    LOGGER.error(
+                        f"Error creating DLC file: {stderr.decode().strip()}"
+                    )
 
         if dlc_file and await aiopath.exists(dlc_file):
             await remove(dlc_file)
